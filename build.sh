@@ -13,7 +13,7 @@ setup_repos() {
     git clone --depth=1 https://github.com/coreos/fedora-coreos-config.git
     ln -sf fedora-coreos-config/*.repo .
     ln -sf fedora-coreos-config/minimal.yaml .
-    rm -f dustymabe-coreos-installer.repo
+    rm -f dustymabe-coreos-installer.repo fedora-coreos-continuous.repo
 
     # Extract repo files from release.rpm
     tmpdir=$(mktemp -d)
@@ -23,6 +23,10 @@ setup_repos() {
     find ${tmpdir} -name "ovirt.repo" -exec cp {} . \;
     sed -i -e "s/@DIST@/fc/g; s/@URLKEY@/mirrorlist/g" ovirt.repo
     rm -rf ${tmpdir}
+
+    for x in *.repo; do
+        sed -i 's/^gpgcheck=.*/gpgcheck=0/g' $x
+    done
 
     # Generate ovirt-node-config
     sed "s/@FC_RELEASE_VER@/${fedora_release}/" ovirt-coreos-base.yaml.in > ovirt-coreos-base.yaml
