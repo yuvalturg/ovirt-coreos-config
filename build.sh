@@ -3,7 +3,6 @@
 CONFIG_DIR=$(dirname $(realpath $0))
 
 export COREOS_ASSEMBLER_CONFIG_GIT=${CONFIG_DIR}
-export COREOS_ASSEMBLER_CONTAINER=localhost/coreos-assembler
 
 setup_repos() {
     local ovirt_release_rpm="$1"
@@ -14,16 +13,15 @@ setup_repos() {
     git clone --depth=1 https://github.com/coreos/fedora-coreos-config.git
     ln -sf fedora-coreos-config/*.repo .
     ln -sf fedora-coreos-config/minimal.yaml .
+    rm -f dustymabe-coreos-installer.repo
 
     # Extract repo files from release.rpm
     tmpdir=$(mktemp -d)
     curl -L -o "${tmpdir}/release.rpm" ${ovirt_release_rpm}
     rpm2cpio "${tmpdir}/release.rpm" | cpio -divuD ${tmpdir}
-    rpm -qp --qf "%{POSTIN}" "${tmpdir}/release.rpm" | \
-        sed "s#\"/#\"/${tmpdir}/#g" > "${tmpdir}/postin.sh"
-    mkdir -p "${tmpdir}/etc/yum.repos.d"
-    bash -e "${tmpdir}/postin.sh"
-    cp ${tmpdir}/etc/yum.repos.d/*.repo .
+    find ${tmpdir} -name "ovirt-f${fedora_release}-deps.repo" -exec cp {} . \;
+    find ${tmpdir} -name "ovirt.repo" -exec cp {} . \;
+    sed -i -e "s/@DIST@/fc/g; s/@URLKEY@/mirrorlist/g" ovirt.repo
     rm -rf ${tmpdir}
 
     # Generate ovirt-node-config
@@ -43,11 +41,16 @@ setup_cosa() {
     if [ ! -d srv-coreos ]
     then
         mkdir srv-coreos
+
         setfacl -m u:1000:rwx srv-coreos
         setfacl -d -m u:1000:rwx srv-coreos
         chcon system_u:object_r:container_file_t:s0 srv-coreos
+
         mkdir -p srv-coreos/overrides/rpm
-        [[ -d overrides ]] && cp overrides/*.rpm srv-coreos/overrides/rpm
+
+        if [[ -d ${COREOS_OVERRIDE_RPMS_DIR} ]]; then
+            cp ${COREOS_OVERRIDE_RPMS_DIR}/*.rpm srv-coreos/overrides/rpm
+        fi
     fi
 
     cd srv-coreos
