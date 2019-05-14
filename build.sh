@@ -10,9 +10,12 @@ setup_repos() {
 
     pushd $CONFIG_DIR
     # Grab basic fedora-coreos-config
-    git clone --depth=1 https://github.com/coreos/fedora-coreos-config.git
+    if [[ ! -d fedora-coreos-config ]]; then
+        git clone --depth=1 https://github.com/coreos/fedora-coreos-config.git
+    fi
     ln -sf fedora-coreos-config/*.repo .
     ln -sf fedora-coreos-config/minimal.yaml .
+    ln -sf fedora-coreos-config/image.yaml .
     rm -f dustymabe-coreos-installer.repo fedora-coreos-continuous.repo
 
     # Extract repo files from release.rpm
